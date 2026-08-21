@@ -28,8 +28,16 @@ func relaunch() {
 
 	disableTHP()
 
+	// Resolve the real path: exec'ing "/proc/self/exe" literally sets
+	// /proc/pid/comm to "exe" instead of the binary's actual name.
+	exePath, err := os.Executable()
+	if err != nil {
+		slog.Warn("nothp: failed to resolve executable path, continuing without re-exec", "err", err)
+		return
+	}
+
 	env := append(os.Environ(), envRelaunched+"=1")
-	if err := syscall.Exec("/proc/self/exe", os.Args, env); err != nil { //nolint:gosec // argv/env are our own, not attacker-controlled.
+	if err := syscall.Exec(exePath, os.Args, env); err != nil { //nolint:gosec // argv/env are our own, not attacker-controlled.
 		slog.Warn("nothp: failed to re-exec self, continuing without THP disabled", "err", err)
 	}
 }
